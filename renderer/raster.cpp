@@ -128,6 +128,9 @@ V3 agent_position(const AgentPath &p, int frame) {
     return {p.start.x + p.dir.x * d, 0, p.start.z + p.dir.z * d};
 }
 
+// Walk cycle: one stride per kStepLength metres walked; the body rises kBob at mid-stride.
+constexpr float kStepLength = 0.75f, kBob = 0.04f;
+
 M4 translate(V3 t) { return {{1, 0, 0, t.x, 0, 1, 0, t.y, 0, 0, 1, t.z, 0, 0, 0, 1}}; }
 
 // Ego rig: four cameras at 1.6 m in the x = 3 corridor facing +z, +x, -z and -x, tilted slightly down. Starts at
@@ -466,6 +469,15 @@ M4 camera_vp(const RasterState &rs, int v, int f, uint32_t view_seed) {
 
 } // namespace
 
+AgentPose agent_pose(const AgentPath &p, int frame) {
+    const float walked = p.phase + p.speed * (float(frame) * kFrameDt);
+    float stride = std::fmod(walked / (2.0f * kStepLength), 1.0f);
+    if (stride < 0) stride += 1.0f;
+    V3 pos = agent_position(p, frame);
+    pos.y = kBob * std::fabs(std::sin(stride * 6.2831853f));
+    return {pos, stride};
+}
+
 bool bin_view(RasterState &rs, TextureCache &cache, int v, int f, uint32_t view_seed) {
     const M4 mvp = camera_vp(rs, v, f, view_seed);
     if (!rs.motion) return bin_triangles<true>(rs.setup, rs.scene, rs.views[uint32_t(v)], mvp, &cache, v, f);
@@ -473,8 +485,8 @@ bool bin_view(RasterState &rs, TextureCache &cache, int v, int f, uint32_t view_
     ObjectTransforms ot;
     ot.prev_vp = camera_vp(rs, v, f - 1, view_seed);
     for (int a = 0; a < kAgents; ++a) {
-        ot.agent[a] = mul(mvp, translate(m.agent_pos[a]));
-        ot.agent_prev[a] = mul(ot.prev_vp, translate(m.agent_prev_pos[a]));
+        ot.agent[a] = mul(mvp, translate(m.tracks[a].pos));
+        ot.agent_prev[a] = mul(ot.prev_vp, translate(m.tracks[a].prev_pos));
     }
     return bin_triangles<true>(rs.setup, rs.scene, rs.views[uint32_t(v)], mvp, &cache, v, f, &ot);
 }
@@ -482,9 +494,19 @@ bool bin_view(RasterState &rs, TextureCache &cache, int v, int f, uint32_t view_
 void step_motion(RasterState &rs, int frame) {
     MotionState &m = *rs.motion;
     for (int a = 0; a < kAgents; ++a) {
-        if (frame == 0) m.agent_prev_pos[a] = agent_position(m.paths[a], -1);
-        else m.agent_prev_pos[a] = m.agent_pos[a]; // last frame's position feeds this frame's motion vectors
-        m.agent_pos[a] = agent_position(m.paths[a], frame);
+        AgentTrack &t = m.tracks[a];
+        const AgentPose now = agent_pose(m.paths[a], frame);
+        t.pos = now.pos;
+        t.stride = now.stride;
+        // Keep the previous pose for motion vectors and the walk-cycle blend.
+        if (frame == 0) {
+            const AgentPose before = agent_pose(m.paths[a], -1);
+            t.prev_pos = before.pos;
+            t.prev_stride = before.stride;
+        } else {
+            t.prev_pos = t.pos;
+            t.prev_stride = t.stride;
+        }
     }
     m.frame = frame;
 }
@@ -556,7 +578,7 @@ MotionMetrics motion_metrics(const RasterState &rs) {
     // The true previous transforms, from the path table and the rig, independent of the stored ones.
     const M4 prev_vp = camera_vp(rs, 0, f - 1, 0);
     V3 true_prev[kAgents];
-    for (int a = 0; a < kAgents; ++a) true_prev[a] = agent_position(m.paths[a], f - 1);
+    for (int a = 0; a < kAgents; ++a) true_prev[a] = agent_pose(m.paths[a], f - 1).pos;
 
     // Pixels in the last row or column have no forward neighbour and are skipped by all three metrics.
     double err = 0, agent_e = 0, static_e = 0;
