@@ -73,7 +73,7 @@ struct RenderOptions {
     bool rebuild_mips_each_frame = false; // regenerate base-texture mips every frame
     int max_views = 16;                  // capacity of the view table
     bool keep_frame_thumbnails = false;  // keep one thumbnail per frame instead of one per view
-    float lod_bias = 0.0f;               // texture level-of-detail bias
+    float lod_bias = 2.5f;               // texture level-of-detail bias
 };
 
 constexpr std::string_view kUsage = "usage: romeo-render --setup A..E [--frames N] [--trace] [--out dir]\n";
