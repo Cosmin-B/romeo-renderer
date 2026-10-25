@@ -68,6 +68,20 @@ void push_quad(ArenaArray<Tri> &tris, V3 p0, V3 p1, V3 p2, V3 p3, int tex, float
     tris.push({{p0, 0, 0}, {p2, uvs, uvs}, {p3, 0, uvs}, tex, shade});
 }
 
+// A standing figure around the y axis: radius profile from the feet to the top of the head, in metres. Quads go
+// lower-ring -> upper-ring so normals face outward; the pole rings are degenerate and skipped by binning.
+void push_figure(ArenaArray<Tri> &tris, int tex) {
+    constexpr float kProfile[kFigureBands + 1][2] = {{0.00f, 0.00f}, {0.04f, 0.14f}, {0.30f, 0.21f}, {0.90f, 0.23f}, {1.25f, 0.21f}, {1.40f, 0.13f},
+                                                      {1.47f, 0.07f}, {1.52f, 0.11f}, {1.60f, 0.135f}, {1.68f, 0.12f}, {1.74f, 0.07f}, {1.76f, 0.00f}};
+    for (int b = 0; b < kFigureBands; ++b)
+        for (int k = 0; k < kFigureSegments; ++k) {
+            const float a0 = 6.2831853f * float(k) / kFigureSegments, a1 = 6.2831853f * float(k + 1) / kFigureSegments;
+            const float y0 = kProfile[b][0], r0 = kProfile[b][1], y1 = kProfile[b + 1][0], r1 = kProfile[b + 1][1];
+            push_quad(tris, {r0 * std::cos(a0), y0, r0 * std::sin(a0)}, {r1 * std::cos(a0), y1, r1 * std::sin(a0)},
+                      {r1 * std::cos(a1), y1, r1 * std::sin(a1)}, {r0 * std::cos(a1), y0, r0 * std::sin(a1)}, tex, 1);
+        }
+}
+
 // One box's five faces (no bottom) between (x0, 0, z0) and (x1, h, z1), in the order make_scene() uses.
 void push_box(ArenaArray<Tri> &tris, float x0, float z0, float x1, float z1, float h, int tex) {
     V3 c[8] = {{x0, 0, z0}, {x1, 0, z0}, {x1, 0, z1}, {x0, 0, z1}, {x0, h, z0}, {x1, h, z0}, {x1, h, z1}, {x0, h, z1}};
@@ -90,8 +104,7 @@ void make_scene(ArenaArray<Tri> &tris) {
 
 // ---------------------------------------------------------------- moving agents and the ego rig
 
-// Agent boxes in model space: 0.5 x 1.8 x 0.5 m, base centred on the origin. The model transform is a translation.
-constexpr float kAgentHalf = 0.25f, kAgentHeight = 1.8f;
+// Agents in model space: push_figure's 1.76 m figure, feet centred on the origin. The model transform is a translation.
 
 // The seeded path table. Box columns and rows sit at multiples of 6 m with 1 m half width, so corridors are 4 m
 // wide around 6k + 3, and the grid ends at z = -31. Even agents cross in front of the rig along x, in the open strip
@@ -373,7 +386,7 @@ bool init_raster(RasterState &rs, Arena &arena, int width, int height, int tile,
         m.ego_moving = ego_moving;
         m.frame = 0;
         // Textures 1..15 like the boxes, so agents add no texture-cache entries.
-        for (int a = 0; a < kAgents; ++a) push_box(rs.scene, -kAgentHalf, -kAgentHalf, kAgentHalf, kAgentHalf, kAgentHeight, 1 + a % 15);
+        for (int a = 0; a < kAgents; ++a) push_figure(rs.scene, 1 + a % 15);
         constexpr float kCell = 80.0f / kGroundCells;
         for (int gz = 0; gz < kGroundCells; ++gz)
             for (int gx = 0; gx < kGroundCells; ++gx) {

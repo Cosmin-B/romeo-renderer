@@ -27,9 +27,12 @@ constexpr int kSceneTriangles = 2 + 11 * 11 * 5 * 2; // 1,212
 // setups replace the single ground quad (triangles 0 and 1) with kGroundCells^2 tiles of one texture repeat each,
 // appended after the agents.
 constexpr int kAgents = 24;
-constexpr int kAgentTris = 5 * 2;
+// An agent is a person-shaped surface of revolution (feet, hips, chest, shoulders, neck, head): kFigureBands
+// profile bands of kFigureSegments quads each.
+constexpr int kFigureSegments = 10, kFigureBands = 11;
+constexpr int kAgentTris = kFigureSegments * kFigureBands * 2;
 constexpr int kGroundCells = 24; // the ground quad's 24 texture repeats over 80 m
-constexpr int kMotionSceneTriangles = kSceneTriangles + kAgents * kAgentTris + kGroundCells * kGroundCells * 2; // 2,604
+constexpr int kMotionSceneTriangles = kSceneTriangles + kAgents * kAgentTris + kGroundCells * kGroundCells * 2;
 static_assert(kMotionSceneTriangles < 65535, "tile bins and the pixel triangle ids store uint16_t indices");
 
 // Agent that owns scene triangle `tri`, or -1 for static geometry.
