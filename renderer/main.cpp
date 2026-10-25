@@ -96,11 +96,11 @@ constexpr int kMaxWorkers = max_workers();
 constexpr int kTraceBuffers = kMaxWorkers + 2; // [0] main, [1] asset loader, [2..] workers
 
 struct RenderOptions {
-    bool copy_textures_per_view = true; // each view keeps its own copy of streamed textures
-    bool read_assets_under_lock = true; // asset loader reads and parses while holding asset_lock
+    bool copy_textures_per_view = false; // each view keeps its own copy of streamed textures
+    bool read_assets_under_lock = false; // asset loader reads and parses while holding asset_lock
     int tile_px = 64;                    // raster tile size in pixels
     bool rebuild_mips_each_frame = false; // regenerate base-texture mips every frame
-    int max_views = 8;                  // capacity of the view table
+    int max_views = 16;                  // capacity of the view table
     bool keep_frame_thumbnails = false;  // keep one thumbnail per frame instead of one per view
     float lod_bias = 0.0f;               // texture level-of-detail bias
 };
