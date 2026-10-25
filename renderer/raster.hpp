@@ -118,14 +118,28 @@ struct AgentPath {
 
 // Moving agents, ego rig and blur output. From the arena only for motion setups; written by the main thread
 // between frames, read by the workers while they rasterize and blur.
+// One agent's pose for a frame: position (with the walk-cycle bob) and stride phase.
+struct AgentPose {
+    V3 pos;
+    float stride; // walk-cycle phase in [0, 1); one cycle per two steps
+};
+
+// One agent's animation state. prev_pos is the previous frame's model translation; motion vectors depend on it.
+struct AgentTrack {
+    V3 pos, prev_pos;
+    float stride = 0, prev_stride = 0;
+};
+
 struct MotionState {
     AgentPath paths[kAgents];
-    V3 agent_pos[kAgents];      // this frame
-    V3 agent_prev_pos[kAgents]; // the previous-frame model transform (a translation) used for motion vectors
+    AgentTrack tracks[kAgents];
     bool ego_moving = false;
     int frame = 0;
     uint32_t *blurred = nullptr; // width * height RGBA8: view 0 after motion blur
 };
+
+// Agent pose for a frame: back-and-forth position plus a small vertical bob from the walk cycle.
+AgentPose agent_pose(const AgentPath &p, int frame);
 
 // The lidar faces' fixed geometry and the sweep's direction tables, built once by init_raster().
 struct LidarRig {
