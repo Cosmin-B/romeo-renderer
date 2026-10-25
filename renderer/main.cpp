@@ -68,7 +68,7 @@ constexpr int kTraceBuffers = kMaxWorkers + 2; // [0] main, [1] asset loader, [2
 
 struct RenderOptions {
     bool copy_textures_per_view = false; // each view keeps its own copy of streamed textures
-    bool read_assets_under_lock = false; // asset loader reads and parses while holding asset_lock
+    bool read_assets_under_lock = true; // asset loader reads and parses while holding asset_lock
     int tile_px = 64;                    // raster tile size in pixels
     bool rebuild_mips_each_frame = false; // regenerate base-texture mips every frame
     int max_views = 16;                  // capacity of the view table
