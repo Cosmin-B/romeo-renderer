@@ -483,7 +483,6 @@ void step_motion(RasterState &rs, int frame) {
     MotionState &m = *rs.motion;
     for (int a = 0; a < kAgents; ++a) {
         if (frame == 0) m.agent_prev_pos[a] = agent_position(m.paths[a], -1);
-        else m.agent_prev_pos[a] = m.agent_pos[a]; // last frame's position feeds this frame's motion vectors
         m.agent_pos[a] = agent_position(m.paths[a], frame);
     }
     m.frame = frame;
